@@ -1,0 +1,48 @@
+name: Build Windows EXE
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'NexaClean_Pro.py'
+      - 'src/NexaClean_Pro.py.gz.b64'
+      - 'requirements.txt'
+      - '.github/workflows/build-windows.yml'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Materialize source if needed
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'NexaClean_Pro.py')) {
+            python -c "import base64,gzip,pathlib; p=pathlib.Path('src/NexaClean_Pro.py.gz.b64'); pathlib.Path('NexaClean_Pro.py').write_bytes(gzip.decompress(base64.b64decode(p.read_text(encoding='ascii').strip())))"
+          }
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build standalone EXE
+        run: |
+          python -m PyInstaller --noconfirm --clean --onefile --windowed --name "NexaClean-Pro" NexaClean_Pro.py
+
+      - name: Upload EXE artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NexaClean-Pro-Windows
+          path: dist/NexaClean-Pro.exe
+          if-no-files-found: error
