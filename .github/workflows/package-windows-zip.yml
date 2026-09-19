@@ -43,4 +43,5 @@ jobs:
             exit 0
           fi
           git commit -m "Update one-click Windows package [skip ci]"
+          git pull --rebase origin main
           git push
