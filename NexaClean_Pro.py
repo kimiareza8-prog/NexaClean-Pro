@@ -38,7 +38,7 @@ except Exception:
     SEND2TRASH_AVAILABLE = False
 
 
-APP_TITLE = "NexaClean Pro 3.4 — Duplicate Cleaner + Smart Photo Gallery + Force Delete"
+APP_TITLE = "NexaClean Pro 3.5 — Duplicate Cleaner + Smart Photo Gallery + Smart Force Delete"
 HASH_CHUNK_SIZE = 8 * 1024 * 1024
 QUICK_HASH_CHUNK_SIZE = 128 * 1024
 PREVIEW_SIZE = (460, 360)
@@ -1434,6 +1434,8 @@ class DuplicateCleanerApp:
         self.force_delete_active = False
         self.force_active_proc = None
         self.force_log_lines = []
+        self.force_log_file = None
+        self.force_last_delete_stats = {}
 
         self._configure_styles()
         self._build_ui()
@@ -1741,7 +1743,11 @@ class DuplicateCleanerApp:
 
         force_log_wrap = ttk.Frame(force_tab, style="Card.TFrame", padding=10)
         force_log_wrap.pack(fill="both", expand=True, padx=20, pady=(0, 8))
-        ttk.Label(force_log_wrap, text="گزارش عملیات", style="CardTitle.TLabel").pack(anchor="e", pady=(0, 6))
+        force_log_head = ttk.Frame(force_log_wrap, style="Card.TFrame")
+        force_log_head.pack(fill="x", pady=(0, 6))
+        ttk.Label(force_log_head, text="گزارش عملیات و تشخیص مشکل", style="CardTitle.TLabel").pack(side="right")
+        ttk.Button(force_log_head, text="کپی گزارش", command=self.copy_force_log, style="Ghost.TButton").pack(side="left")
+        ttk.Button(force_log_head, text="باز کردن فایل گزارش", command=self.open_force_log_file, style="Ghost.TButton").pack(side="left", padx=(6, 0))
         self.force_log = tk.Text(
             force_log_wrap, height=14, bg="#0f141d", fg="#d1d5db", insertbackground="#ffffff",
             bd=0, relief="flat", wrap="word", font=("Segoe UI", 9)
@@ -3266,10 +3272,19 @@ class DuplicateCleanerApp:
             self.force_admin_var.set("Administrator: غیرفعال — برای پوشه‌های Access Denied باید برنامه را با دسترسی Administrator اجرا کنید")
 
     def _append_force_log(self, text):
-        if not hasattr(self, "force_log"):
-            return
         stamp = time.strftime("%H:%M:%S")
         line = f"[{stamp}] {text}\n"
+        self.force_log_lines.append(line.rstrip("\n"))
+        if len(self.force_log_lines) > 8000:
+            self.force_log_lines = self.force_log_lines[-6000:]
+        if self.force_log_file:
+            try:
+                with open(self.force_log_file, "a", encoding="utf-8") as fp:
+                    fp.write(line)
+            except Exception:
+                pass
+        if not hasattr(self, "force_log"):
+            return
         try:
             self.force_log.configure(state="normal")
             self.force_log.insert("end", line)
@@ -3277,6 +3292,82 @@ class DuplicateCleanerApp:
             self.force_log.configure(state="disabled")
         except Exception:
             pass
+
+    def _start_force_log_file(self, folder):
+        self.force_log_lines = []
+        self.force_log_file = None
+        try:
+            base = os.environ.get("LOCALAPPDATA") or os.path.join(str(Path.home()), ".nexaclean-pro")
+            log_dir = os.path.join(base, "NexaClean Pro", "logs")
+            os.makedirs(log_dir, exist_ok=True)
+            stamp = time.strftime("%Y%m%d-%H%M%S")
+            drive = os.path.splitdrive(os.path.abspath(folder))[0].replace(":", "") or "folder"
+            self.force_log_file = os.path.join(log_dir, f"force-delete-{drive}-{stamp}.log")
+            with open(self.force_log_file, "w", encoding="utf-8") as fp:
+                fp.write("NexaClean Pro 3.5 - Smart Force Delete log\n")
+                fp.write(f"Started: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+                fp.write(f"Target: {folder}\n\n")
+        except Exception:
+            self.force_log_file = None
+
+    def copy_force_log(self):
+        data = "\n".join(self.force_log_lines).strip()
+        if not data:
+            self.force_status_var.set("هنوز گزارشی برای کپی وجود ندارد.")
+            return
+        try:
+            self.root.clipboard_clear()
+            self.root.clipboard_append(data)
+            self.force_status_var.set("گزارش عملیات در Clipboard کپی شد.")
+        except Exception as exc:
+            messagebox.showerror("خطا", f"کپی گزارش ممکن نشد:\n{exc}")
+
+    def open_force_log_file(self):
+        if self.force_log_file and os.path.exists(self.force_log_file):
+            open_with_default_app(self.force_log_file)
+        else:
+            self.force_status_var.set("فایل گزارش هنوز ساخته نشده است؛ ابتدا عملیات حذف را شروع کنید.")
+
+    @staticmethod
+    def _force_error_kind(exc):
+        winerror = getattr(exc, "winerror", None)
+        err_no = getattr(exc, "errno", None)
+        msg = str(exc).lower()
+        if isinstance(exc, FileNotFoundError) or winerror in (2, 3):
+            return "missing"
+        if winerror in (32, 33) or "being used by another process" in msg or "used by another process" in msg:
+            return "locked"
+        if isinstance(exc, PermissionError) or winerror in (5, 1314) or err_no in (13, 1):
+            return "access_denied"
+        if winerror == 206 or "filename or extension is too long" in msg:
+            return "path_too_long"
+        if winerror in (145, 183) or "directory is not empty" in msg:
+            return "dir_not_empty"
+        if winerror in (4390, 4392) or "reparse" in msg:
+            return "reparse"
+        return "other"
+
+    def _force_diagnosis_text(self, stats):
+        kinds = stats.get("errors_by_kind", {}) if stats else {}
+        parts = []
+        access = kinds.get("access_denied", 0)
+        locked = kinds.get("locked", 0)
+        longp = kinds.get("path_too_long", 0)
+        notempty = kinds.get("dir_not_empty", 0)
+        other = kinds.get("other", 0)
+        if access:
+            parts.append(f"Access Denied: {access:,} — نیاز به اصلاح مالکیت/ACL")
+        if locked:
+            parts.append(f"فایل در حال استفاده: {locked:,} — takeown معمولاً کمکی نمی‌کند؛ Restart مؤثرتر است")
+        if longp:
+            parts.append(f"مسیر خیلی طولانی: {longp:,} — موتور Long Path فعال است")
+        if notempty:
+            parts.append(f"پوشه خالی‌نشده: {notempty:,} — معمولاً نتیجه فایل قفل/بدون‌دسترسی داخل آن است")
+        if other:
+            parts.append(f"خطای دیگر: {other:,}")
+        if not parts and stats and stats.get("errors", 0):
+            parts.append(f"خطاهای ثبت‌شده: {stats.get('errors', 0):,}")
+        return " | ".join(parts) if parts else "خطای مؤثر خاصی تشخیص داده نشد."
 
     def choose_force_folder(self):
         initial = self.force_folder_var.get().strip() or self.folder_var.get().strip() or os.getcwd()
@@ -3381,7 +3472,12 @@ class DuplicateCleanerApp:
         self.force_cancel_btn.configure(state="normal")
         self.force_progress.start(10)
         self.force_status_var.set(f"شروع حذف اجباری: {label}")
+        self._start_force_log_file(folder)
         self._append_force_log("شروع عملیات حذف اجباری.")
+        self._append_force_log(f"نسخه موتور حذف: NexaClean Pro 3.5 | Administrator: {'بله' if is_windows_admin() else 'خیر'}")
+        self._append_force_log(f"هویت اجرا: {windows_identity() or 'نامشخص'}")
+        if self.force_log_file:
+            self._append_force_log(f"فایل گزارش کامل: {self.force_log_file}")
         self.force_delete_thread = threading.Thread(
             target=self._force_delete_worker,
             args=(folder, self.force_takeown_var.get(), self.force_clear_attrs_var.get(), self.force_reboot_var.get()),
@@ -3480,71 +3576,291 @@ class DuplicateCleanerApp:
         finally:
             self.force_active_proc = None
 
-    def _force_remove_tree(self, folder):
+    def _force_remove_tree(self, folder, phase_label="حذف", time_budget=None):
+        """Delete a tree with live progress, bounded fast-pass time, and error diagnosis.
+
+        Unlike shutil.rmtree, this routine never goes silent for minutes. It walks the
+        tree itself, does not follow symlinks/junctions, reports progress periodically,
+        and classifies Windows errors so the next escalation step can be chosen
+        intelligently.
+        """
         target = make_long_windows_path(folder)
+        started = time.monotonic()
+        last_ui = started
+        last_log = started
         errors = []
-        error_count = 0
+        stats = {
+            "visited_files": 0, "visited_dirs": 0,
+            "deleted_files": 0, "deleted_dirs": 0,
+            "deleted_bytes": 0, "errors": 0,
+            "errors_by_kind": defaultdict(int),
+            "reparse_points": 0, "timed_out": False,
+        }
+
+        def display_path(path):
+            p = str(path)
+            if p.startswith("\\\\?\\UNC\\"):
+                p = "\\\\" + p[8:]
+            elif p.startswith("\\\\?\\"):
+                p = p[4:]
+            return p
 
         def remember_error(path, exc):
-            nonlocal error_count
-            error_count += 1
-            if len(errors) < 30:
-                errors.append((path, str(exc)))
+            kind = self._force_error_kind(exc)
+            if kind == "missing":
+                return
+            stats["errors"] += 1
+            stats["errors_by_kind"][kind] += 1
+            if len(errors) < 40:
+                errors.append((display_path(path), str(exc), kind))
 
-        def onerror(func, path, exc_info):
+        def maybe_report(current="", force=False):
+            nonlocal last_ui, last_log
+            now = time.monotonic()
+            elapsed = int(now - started)
+            total_deleted = stats["deleted_files"] + stats["deleted_dirs"]
+            if force or now - last_ui >= 1.25:
+                cur = os.path.basename(display_path(current).rstrip("\\/")) if current else ""
+                cur_txt = f" • فعلی: {cur[:45]}" if cur else ""
+                self.force_queue.put((
+                    "force_live_status",
+                    f"{phase_label}: حذف {stats['deleted_files']:,} فایل + {stats['deleted_dirs']:,} پوشه "
+                    f"• بررسی {stats['visited_files'] + stats['visited_dirs']:,} • خطا {stats['errors']:,} "
+                    f"• {human_size(stats['deleted_bytes'])} • {elapsed} ثانیه{cur_txt}"
+                ))
+                last_ui = now
+            if force or now - last_log >= 10.0:
+                self.force_queue.put((
+                    "force_log",
+                    f"{phase_label} در حال پیشرفت — حذف‌شده: {total_deleted:,} مورد "
+                    f"({human_size(stats['deleted_bytes'])}) • بررسی‌شده: "
+                    f"{stats['visited_files'] + stats['visited_dirs']:,} • خطا: {stats['errors']:,} • زمان: {elapsed}s"
+                ))
+                last_log = now
+
+        def budget_expired():
+            if not time_budget:
+                return False
+            if time.monotonic() - started < float(time_budget):
+                return False
+            stats["timed_out"] = True
+            return True
+
+        def make_writable(path):
+            try:
+                os.chmod(path, stat.S_IWRITE | stat.S_IREAD)
+            except Exception:
+                pass
+
+        def remove_leaf(path, is_dir_link=False, known_size=0):
             if self.force_delete_stop_event.is_set():
                 raise InterruptedError("operation cancelled")
             try:
-                os.chmod(path, stat.S_IWRITE | stat.S_IREAD)
-                func(path)
+                if is_dir_link:
+                    os.rmdir(path)
+                    stats["deleted_dirs"] += 1
+                else:
+                    os.remove(path)
+                    stats["deleted_files"] += 1
+                    stats["deleted_bytes"] += max(0, int(known_size or 0))
+                return True
+            except FileNotFoundError:
+                return True
+            except Exception as first_exc:
+                make_writable(path)
+                try:
+                    if is_dir_link:
+                        os.rmdir(path)
+                        stats["deleted_dirs"] += 1
+                    else:
+                        os.remove(path)
+                        stats["deleted_files"] += 1
+                        stats["deleted_bytes"] += max(0, int(known_size or 0))
+                    return True
+                except FileNotFoundError:
+                    return True
+                except Exception as exc:
+                    remember_error(path, exc if exc is not None else first_exc)
+                    return False
+
+        # Iterative post-order traversal: safe for very deep Windows trees and does not
+        # recurse into junctions/symlinks that could escape the selected folder.
+        stack = [(target, False)]
+        while stack:
+            if self.force_delete_stop_event.is_set():
+                raise InterruptedError("operation cancelled")
+            if budget_expired():
+                self.force_queue.put((
+                    "force_log",
+                    f"{phase_label}: سقف زمانی {int(time_budget)} ثانیه برای مرحله سریع رسید؛ "
+                    "مرحله متوقف شد تا موتور هوشمند روش بعدی را انتخاب کند."
+                ))
+                break
+
+            current, expanded = stack.pop()
+            maybe_report(current)
+
+            try:
+                is_link = os.path.islink(current)
+            except Exception:
+                is_link = False
+            try:
+                is_junction = bool(getattr(os.path, "isjunction", lambda _p: False)(current))
+            except Exception:
+                is_junction = False
+
+            if current != target and (is_link or is_junction):
+                stats["reparse_points"] += 1
+                try:
+                    dir_link = os.path.isdir(current)
+                except Exception:
+                    dir_link = True
+                remove_leaf(current, is_dir_link=dir_link)
+                continue
+
+            if expanded:
+                stats["visited_dirs"] += 1
+                try:
+                    os.rmdir(current)
+                    stats["deleted_dirs"] += 1
+                except FileNotFoundError:
+                    pass
+                except Exception as exc:
+                    make_writable(current)
+                    try:
+                        os.rmdir(current)
+                        stats["deleted_dirs"] += 1
+                    except FileNotFoundError:
+                        pass
+                    except Exception as exc2:
+                        remember_error(current, exc2 if exc2 is not None else exc)
+                continue
+
+            try:
+                with os.scandir(current) as it:
+                    entries = list(it)
+            except FileNotFoundError:
+                continue
+            except NotADirectoryError:
+                remove_leaf(current, is_dir_link=False)
+                continue
             except Exception as exc:
-                remember_error(path, exc)
+                remember_error(current, exc)
+                continue
 
-        try:
-            shutil.rmtree(target, onerror=onerror)
-        except TypeError:
-            shutil.rmtree(target)
-        except FileNotFoundError:
-            return True, 0, []
-        except InterruptedError:
-            raise
-        except Exception as exc:
-            remember_error(folder, exc)
+            stack.append((current, True))
+            for entry in reversed(entries):
+                if self.force_delete_stop_event.is_set():
+                    raise InterruptedError("operation cancelled")
+                ep = entry.path
+                try:
+                    entry_link = entry.is_symlink()
+                except Exception:
+                    entry_link = False
+                try:
+                    entry_junction = bool(getattr(os.path, "isjunction", lambda _p: False)(ep))
+                except Exception:
+                    entry_junction = False
+                if entry_link or entry_junction:
+                    stats["reparse_points"] += 1
+                    try:
+                        dir_link = entry.is_dir(follow_symlinks=False) or entry_junction
+                    except Exception:
+                        dir_link = entry_junction
+                    remove_leaf(ep, is_dir_link=dir_link)
+                    continue
+                try:
+                    if entry.is_dir(follow_symlinks=False):
+                        stack.append((ep, False))
+                    else:
+                        stats["visited_files"] += 1
+                        try:
+                            size = entry.stat(follow_symlinks=False).st_size
+                        except Exception:
+                            size = 0
+                        remove_leaf(ep, is_dir_link=False, known_size=size)
+                except FileNotFoundError:
+                    pass
+                except Exception as exc:
+                    remember_error(ep, exc)
 
-        return (not os.path.exists(folder)), error_count, errors
+        maybe_report(folder, force=True)
+        stats["elapsed"] = round(time.monotonic() - started, 1)
+        stats["errors_by_kind"] = dict(stats["errors_by_kind"])
+        success = not os.path.exists(folder)
+        self.force_last_delete_stats = stats
+        self.force_queue.put((
+            "force_log",
+            f"{phase_label} خلاصه: فایل حذف‌شده {stats['deleted_files']:,} • پوشه حذف‌شده {stats['deleted_dirs']:,} "
+            f"• حجم {human_size(stats['deleted_bytes'])} • خطا {stats['errors']:,} • "
+            f"Reparse/Junction {stats['reparse_points']:,} • زمان {stats['elapsed']}s"
+        ))
+        if stats["errors"]:
+            self.force_queue.put(("force_log", "تحلیل خودکار مشکل: " + self._force_diagnosis_text(stats)))
+        return success, stats["errors"], errors, stats
 
     def _schedule_remaining_tree_for_reboot(self, folder):
         scheduled = 0
         failed = 0
+        visited = 0
+        started = time.monotonic()
+        last_ui = started
         if not os.path.exists(folder):
             return scheduled, failed
-        # Schedule files before folders; Windows can remove a directory at reboot only after children disappear.
+
+        def progress(current=""):
+            nonlocal last_ui
+            now = time.monotonic()
+            if now - last_ui >= 1.5:
+                elapsed = int(now - started)
+                name = os.path.basename(str(current).rstrip("\\/"))[:45] if current else ""
+                self.force_queue.put((
+                    "force_live_status",
+                    f"زمان‌بندی Restart: بررسی {visited:,} • ثبت {scheduled:,} • ناموفق {failed:,} • {elapsed}s"
+                    + (f" • فعلی: {name}" if name else "")
+                ))
+                last_ui = now
+
         try:
-            for root, dirs, files in os.walk(folder, topdown=False):
+            for root, dirs, files in os.walk(folder, topdown=False, followlinks=False):
                 if self.force_delete_stop_event.is_set():
                     raise InterruptedError("operation cancelled")
                 for name in files:
                     p = os.path.join(root, name)
+                    visited += 1
                     if schedule_path_delete_on_reboot(p):
                         scheduled += 1
                     else:
                         failed += 1
+                    progress(p)
                 for name in dirs:
                     p = os.path.join(root, name)
+                    visited += 1
                     if schedule_path_delete_on_reboot(p):
                         scheduled += 1
                     else:
                         failed += 1
+                    progress(p)
+            visited += 1
             if schedule_path_delete_on_reboot(folder):
                 scheduled += 1
             else:
                 failed += 1
-        except PermissionError:
-            # Even if enumeration is blocked, at least try the selected root.
+        except PermissionError as exc:
+            self.force_queue.put((
+                "force_log",
+                f"زمان‌بندی Restart هنگام پیمایش Access Denied گرفت: {exc}. خود پوشه اصلی مستقیماً ثبت می‌شود."
+            ))
+            visited += 1
             if schedule_path_delete_on_reboot(folder):
                 scheduled += 1
             else:
                 failed += 1
+        elapsed = round(time.monotonic() - started, 1)
+        self.force_queue.put((
+            "force_log",
+            f"زمان‌بندی Restart تمام شد: بررسی {visited:,} • ثبت {scheduled:,} • ناموفق {failed:,} • زمان {elapsed}s"
+        ))
         return scheduled, failed
 
     def _force_delete_worker(self, folder, do_takeown, clear_attrs, schedule_reboot):
@@ -3601,19 +3917,26 @@ class DuplicateCleanerApp:
             # through Windows directory junctions, so it is safer than a blind shell rd.
             self.force_queue.put(("force_status", "مرحله 3/5: تلاش حذف مستقیم قبل از پردازش سنگین مجوزها ..."))
             self.force_queue.put(("force_log", "حذف مستقیم اولیه شروع شد؛ اگر مجوزهای فعلی کافی باشند مرحله بازگشتی کاملاً رد می‌شود."))
-            success, error_count, errors = self._force_remove_tree(folder)
+            success, error_count, errors, first_stats = self._force_remove_tree(
+                folder, phase_label="حذف اولیه", time_budget=120
+            )
             if success:
                 self.force_queue.put(("force_done", (folder, 0, 0)))
                 return
-            self.force_queue.put((
-                "force_log",
-                f"حذف اولیه کامل نشد؛ {error_count:,} خطا دیده شد. حالا فقط به دلیل باقی‌ماندن فایل‌ها، تعمیر بازگشتی مجوزها اجرا می‌شود."
-            ))
-            for p, err in errors[:4]:
-                self.force_queue.put(("force_log", f"نمونه خطا: {p} — {err}"))
 
-            if is_win and do_takeown and os.path.exists(folder):
-                self.force_queue.put(("force_status", "مرحله 4/5: تعمیر بازگشتی مالکیت و مجوزها ..."))
+            diagnosis = self._force_diagnosis_text(first_stats)
+            self.force_queue.put(("force_log", f"حذف اولیه کامل نشد؛ {error_count:,} خطای مؤثر ثبت شد."))
+            self.force_queue.put(("force_log", "تصمیم موتور: " + diagnosis))
+            for sample in errors[:6]:
+                p, err, kind = sample
+                self.force_queue.put(("force_log", f"نمونه [{kind}]: {p} — {err}"))
+
+            kinds = first_stats.get("errors_by_kind", {})
+            acl_needed = kinds.get("access_denied", 0) > 0 or kinds.get("other", 0) > 0
+            locked_only = bool(kinds.get("locked", 0)) and not acl_needed
+
+            if is_win and do_takeown and os.path.exists(folder) and acl_needed:
+                self.force_queue.put(("force_status", "مرحله 4/5: تعمیر بازگشتی مالکیت و مجوزها فقط برای خطاهای دسترسی ..."))
                 # Use /A to assign ownership to Administrators. /SKIPSL prevents
                 # takeown from following symbolic links/reparse links outside the tree.
                 take_rc = self._run_force_process(
@@ -3633,29 +3956,45 @@ class DuplicateCleanerApp:
                     ["icacls.exe", native, "/grant:r", f"{admin_sid}:(OI)(CI)F", "/T", "/C", "/Q", "/L"],
                     "icacls بازگشتی Full Control", timeout_seconds=1200
                 )
+            elif is_win and do_takeown and os.path.exists(folder):
+                if locked_only:
+                    self.force_queue.put((
+                        "force_log",
+                        "مرحله 4/5 هوشمندانه رد شد: خطاهای باقی‌مانده از نوع فایلِ در حال استفاده هستند؛ "
+                        "تغییر مالکیت/ACL این نوع قفل را باز نمی‌کند و فقط زمان را تلف می‌کند."
+                    ))
+                else:
+                    self.force_queue.put(("force_log", "مرحله 4/5 رد شد: Access Denied مؤثری برای تعمیر بازگشتی تشخیص داده نشد."))
 
-            if is_win and clear_attrs and os.path.exists(folder):
-                # Do this only after ACL repair. Running recursive attrib before access
-                # repair can waste minutes on a tree we cannot enumerate yet.
+            if is_win and clear_attrs and os.path.exists(folder) and acl_needed:
                 wildcard = os.path.join(native, "*")
                 self._run_force_process(
                     ["attrib.exe", "-R", "-S", "-H", wildcard, "/S", "/D", "/L"],
                     "attrib بازگشتی", timeout_seconds=900
                 )
+            elif is_win and clear_attrs and os.path.exists(folder):
+                self.force_queue.put((
+                    "force_log",
+                    "attrib بازگشتی رد شد: حذف اولیه Access Denied قابل‌توجهی نشان نداد؛ پیمایش کامل دوباره فقط سرعت را کم می‌کرد."
+                ))
 
             if self.force_delete_stop_event.is_set():
                 raise InterruptedError
 
             self.force_queue.put(("force_status", "مرحله 5/5: حذف نهایی پوشه و محتویات ..."))
             self.force_queue.put(("force_log", "حذف نهایی شروع شد."))
-            success, error_count, errors = self._force_remove_tree(folder)
+            success, error_count, errors, final_stats = self._force_remove_tree(
+                folder, phase_label="حذف نهایی", time_budget=1800
+            )
             if success:
                 self.force_queue.put(("force_done", (folder, 0, 0)))
                 return
 
-            self.force_queue.put(("force_log", f"حذف نهایی کامل نشد؛ {error_count:,} خطا ثبت شد."))
-            for p, err in errors[:6]:
-                self.force_queue.put(("force_log", f"ناموفق: {p} — {err}"))
+            self.force_queue.put(("force_log", f"حذف نهایی کامل نشد؛ {error_count:,} خطای مؤثر ثبت شد."))
+            self.force_queue.put(("force_log", "جمع‌بندی هوشمند: " + self._force_diagnosis_text(final_stats)))
+            for sample in errors[:8]:
+                p, err, kind = sample
+                self.force_queue.put(("force_log", f"ناموفق [{kind}]: {p} — {err}"))
 
             if schedule_reboot and is_win and os.path.exists(folder):
                 self.force_queue.put(("force_status", "برخی فایل‌ها قفل هستند؛ زمان‌بندی حذف بعد از Restart ..."))
@@ -3677,6 +4016,8 @@ class DuplicateCleanerApp:
                 elif kind == "force_status":
                     self.force_status_var.set(payload)
                     self._append_force_log(payload)
+                elif kind == "force_live_status":
+                    self.force_status_var.set(payload)
                 elif kind == "force_done":
                     folder, scheduled, failed = payload
                     self.force_delete_active = False
@@ -3686,7 +4027,8 @@ class DuplicateCleanerApp:
                     if not os.path.exists(folder):
                         self.force_status_var.set("پوشه با موفقیت کامل حذف شد.")
                         self._append_force_log("پوشه به‌طور کامل حذف شد.")
-                        messagebox.showinfo("انجام شد", "پوشه با موفقیت کامل حذف شد.")
+                        extra = f"\n\nگزارش کامل:\n{self.force_log_file}" if self.force_log_file else ""
+                        messagebox.showinfo("انجام شد", "پوشه با موفقیت کامل حذف شد." + extra)
                     elif scheduled:
                         self.force_status_var.set(
                             f"{scheduled:,} مورد برای حذف پس از Restart ثبت شد" + (f" • ناموفق: {failed:,}" if failed else "")
