@@ -3709,7 +3709,7 @@ class DuplicateCleanerApp:
             except Exception:
                 is_junction = False
 
-            if current != target and (is_link or is_junction):
+            if is_link or is_junction:
                 stats["reparse_points"] += 1
                 try:
                     dir_link = os.path.isdir(current)
@@ -3764,7 +3764,7 @@ class DuplicateCleanerApp:
                 if entry_link or entry_junction:
                     stats["reparse_points"] += 1
                     try:
-                        dir_link = entry.is_dir(follow_symlinks=False) or entry_junction
+                        dir_link = entry.is_dir(follow_symlinks=True) or entry_junction
                     except Exception:
                         dir_link = entry_junction
                     remove_leaf(ep, is_dir_link=dir_link)
