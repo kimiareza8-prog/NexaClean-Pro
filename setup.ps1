@@ -117,7 +117,7 @@ try {
         $shortcut = $ws.CreateShortcut((Join-Path $desktop 'NexaClean Pro.lnk'))
         $shortcut.TargetPath = (Join-Path $PSScriptRoot 'RUN.bat')
         $shortcut.WorkingDirectory = $PSScriptRoot
-        $shortcut.Description = 'NexaClean Pro 3.4'
+        $shortcut.Description = 'NexaClean Pro 3.5'
         $shortcut.Save()
     } catch {
         Write-Host "Desktop shortcut could not be created: $($_.Exception.Message)" -ForegroundColor Yellow
