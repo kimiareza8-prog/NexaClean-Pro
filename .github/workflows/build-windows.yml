@@ -6,7 +6,6 @@ on:
     branches: [ main ]
     paths:
       - 'NexaClean_Pro.py'
-      - 'src/NexaClean_Pro.py.gz.b64'
       - 'requirements.txt'
       - '.github/workflows/build-windows.yml'
 
@@ -22,13 +21,6 @@ jobs:
         with:
           python-version: '3.12'
           cache: 'pip'
-
-      - name: Materialize source if needed
-        shell: pwsh
-        run: |
-          if (-not (Test-Path 'NexaClean_Pro.py')) {
-            python -c "import base64,gzip,pathlib; p=pathlib.Path('src/NexaClean_Pro.py.gz.b64'); pathlib.Path('NexaClean_Pro.py').write_bytes(gzip.decompress(base64.b64decode(p.read_text(encoding='ascii').strip())))"
-          }
 
       - name: Install dependencies
         run: |
