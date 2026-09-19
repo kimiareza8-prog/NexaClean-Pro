@@ -1,0 +1,4 @@
+Pillow>=10.0
+send2trash>=1.8
+psutil>=5.9
+opencv-python>=4.8
