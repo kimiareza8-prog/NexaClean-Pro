@@ -11,7 +11,7 @@
 
 ## دانلود از GitHub
 
-در صفحه Repository روی **Code → Download ZIP** بزنید، ZIP را Extract کنید و `SETUP.bat` را اجرا کنید. Repository یک نسخه فشرده از سورس را هم نگه می‌دارد؛ GitHub Actions به‌صورت خودکار فایل خوانای `NexaClean_Pro.py` را Materialize می‌کند. اگر Action هنوز اجرا نشده باشد، `SETUP.bat` خودش همان فایل را قبل از نصب بازسازی می‌کند.
+در صفحه Repository روی **Code → Download ZIP** بزنید، ZIP را Extract کنید و `SETUP.bat` را اجرا کنید. فایل اصلی `NexaClean_Pro.py` مستقیماً داخل Repository قرار دارد و GitHub Actions نیز می‌تواند نسخه مستقل Windows EXE را Build کند.
 
 برای کاربر عادی نیازی نیست Python یا کتابخانه‌ها را دستی نصب کند.
 
