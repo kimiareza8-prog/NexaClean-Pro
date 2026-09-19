@@ -3657,7 +3657,10 @@ class DuplicateCleanerApp:
                 raise InterruptedError("operation cancelled")
             try:
                 if is_dir_link:
-                    os.rmdir(path)
+                    try:
+                        os.rmdir(path)
+                    except NotADirectoryError:
+                        os.unlink(path)
                     stats["deleted_dirs"] += 1
                 else:
                     os.remove(path)
@@ -3670,7 +3673,10 @@ class DuplicateCleanerApp:
                 make_writable(path)
                 try:
                     if is_dir_link:
-                        os.rmdir(path)
+                        try:
+                            os.rmdir(path)
+                        except NotADirectoryError:
+                            os.unlink(path)
                         stats["deleted_dirs"] += 1
                     else:
                         os.remove(path)
