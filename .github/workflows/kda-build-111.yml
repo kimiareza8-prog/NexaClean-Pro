@@ -18,7 +18,7 @@ jobs:
       - name: Build 1.1.1 from signed-channel 1.1.0 package
         shell: python
         run: |
-          import pathlib, re, zipfile
+          import pathlib, re, zipfile, hashlib
           src = pathlib.Path('kda/kimiya-diagnostic-agent-v1.1.0.zip')
           dst = pathlib.Path('kda/kimiya-diagnostic-agent-v1.1.1.zip')
           if not src.exists():
@@ -40,11 +40,13 @@ jobs:
                   new_info.external_attr = info.external_attr
                   new_info.compress_type = zipfile.ZIP_DEFLATED
                   zout.writestr(new_info, data)
-          print(dst, dst.stat().st_size)
+          sha = hashlib.sha256(dst.read_bytes()).hexdigest()
+          pathlib.Path('kda/sha256-1.1.1.txt').write_text(sha + '\n')
+          print(dst, dst.stat().st_size, sha)
       - name: Commit package
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add kda/kimiya-diagnostic-agent-v1.1.1.zip
+          git add kda/kimiya-diagnostic-agent-v1.1.1.zip kda/sha256-1.1.1.txt
           git commit -m "Build KDA v1.1.1 package [skip ci]"
           git push
