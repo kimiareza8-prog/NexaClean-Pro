@@ -1,0 +1,20 @@
+name: KDA repair inspect 1.1.5
+
+on:
+  push:
+    branches: [kda-releases]
+    paths:
+      - '.github/workflows/kda-repair-inspect-115.yml'
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update agent
+        run: |
+          curl --fail-with-body --connect-timeout 10 --max-time 180 -sS 'https://www.kimiazivar.com/wp-json/kda/v1/update-trigger?ts=1790070480&nonce=KDAUpdate115Inspect_A9b8C7d6E5f4G3h2&sig=uc6_hRnn4wuDM9hTDgP1ohWjEwJb8Il1WptQ3uAbiquRE-W3-fSWs8UMCf0aOBoAUDLHADOWJu37Hmx3LghpAA'
+          echo
+      - name: Inspect real repair settings
+        run: |
+          sleep 8
+          curl --fail-with-body --connect-timeout 10 --max-time 180 -sS 'https://www.kimiazivar.com/wp-json/kda/v1/signed-repair-inspect?ts=1790070480&nonce=KDARepairInspect115_Z1y2X3w4V5u6T7s8&sig=Xd78jkak3IxzikKrBZJLvgyRnv_Tnbii9GitgSicT4cNj5zopLlmUsKBYcLZVJMFT-i1wgxtt9j2g9BUFfw2Ag'
