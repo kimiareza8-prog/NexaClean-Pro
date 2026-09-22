@@ -1,0 +1,15 @@
+name: KDA update to 1.1.7 repair admin
+
+on:
+  push:
+    branches: [kda-releases]
+    paths:
+      - '.github/workflows/kda-update-117-only.yml'
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update agent
+        run: |
+          curl --fail-with-body --connect-timeout 10 --max-time 180 -sS 'https://www.kimiazivar.com/wp-json/kda/v1/update-trigger?ts=1790072506&nonce=KDAUpdate117Admin_Q2w3E4r5T6y7U8i9&sig=vnjVT3V2-KsF_2DNVEBF3MwRaHqc2BQ4C66Ox7-tA61YneO5kYu91JCodjppHXiqnqzqi3-0y7S5W5xmxMrLBQ'
