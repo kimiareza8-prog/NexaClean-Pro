@@ -1,0 +1,38 @@
+name: Build KDA 1.1.2 package
+
+on:
+  push:
+    branches: [kda-releases]
+    paths:
+      - '.github/workflows/kda-build-112.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reconstruct and verify
+        shell: python
+        run: |
+          import base64, hashlib, pathlib
+          root=pathlib.Path('kda/112-chunks')
+          payload=''.join((root/f'{i:02}.txt').read_text().strip() for i in range(4))
+          data=base64.b64decode(payload, validate=True)
+          sha=hashlib.sha256(data).hexdigest()
+          expected='830cbee65fc69d51f7b50498d72e9e2d3d6a2e3a8ebf59e33fdc8b36f47c2883'
+          if sha != expected:
+              raise SystemExit(f'SHA mismatch {sha} != {expected}')
+          out=pathlib.Path('kda/kimiya-diagnostic-agent-v1.1.2.zip')
+          out.write_bytes(data)
+          print(out, len(data), sha)
+      - name: Commit verified package
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add kda/kimiya-diagnostic-agent-v1.1.2.zip
+          git commit -m "Build KDA v1.1.2 package [skip ci]"
+          git push
