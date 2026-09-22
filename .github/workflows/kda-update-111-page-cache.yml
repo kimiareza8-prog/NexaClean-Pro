@@ -1,0 +1,15 @@
+name: KDA update to 1.1.11 page cache repair
+
+on:
+  push:
+    branches: [kda-releases]
+    paths:
+      - '.github/workflows/kda-update-111-page-cache.yml'
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update agent
+        run: |
+          curl --fail-with-body --connect-timeout 10 --max-time 180 -sS 'https://www.kimiazivar.com/wp-json/kda/v1/update-trigger?ts=1790074264&nonce=KDAUpdate111PageCache_8648852270e8dc89&sig=cA7UC8Yiwz_DaZOwIBkcKBmf7yjHgK5r3nMXAQyoTEuBKK1f8wJsqynn8FTrLvVwW55hvZuI_n9CJ8BJl4rPDQ'
