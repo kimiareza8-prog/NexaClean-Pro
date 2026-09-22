@@ -1,0 +1,18 @@
+name: KDA login 507 inspect
+
+on:
+  push:
+    branches: [kda-releases]
+    paths:
+      - '.github/workflows/kda-login-507.yml'
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch login response
+        shell: bash
+        run: |
+          set +e
+          echo '=== HEADERS ==='
+          curl -4 -i --connect-timeout 8 --max-time 20 -sS https://www.kimiazivar.com/wp-login.php | head -80
