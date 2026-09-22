@@ -1,0 +1,20 @@
+name: KDA signed health report 1.1.2
+
+on:
+  push:
+    branches: [kda-releases]
+    paths:
+      - '.github/workflows/kda-signed-health-112.yml'
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update agent to 1.1.2
+        run: |
+          curl --fail-with-body --connect-timeout 10 --max-time 180 -sS 'https://www.kimiazivar.com/wp-json/kda/v1/update-trigger?ts=1790068380&nonce=W_gyXp_Ej3YQsBJoTkJ52jJDzt_L-U__&sig=bTCsFeH-2EbgIZjSaZjW5ESDSvnix6OM_6poHjadheFRD4c5T85VpdtlVUl8PnC5s9-J-VnGrumEEKqw57j-CQ'
+          echo
+      - name: Read signed diagnostic report
+        run: |
+          sleep 8
+          curl --fail-with-body --connect-timeout 10 --max-time 180 -sS 'https://www.kimiazivar.com/wp-json/kda/v1/signed-report?ts=1790068380&nonce=H5xJf82jGQm_u8B4YRXNqPclVuh1N8QK&sig=nbxUsVyBMzhOhap33Pz4re3MJBk7qLwNfqOwncB8dqCueLHsMFsqMCJxx2Y1HpwK6-iKESP1EckvqOaN85cECA'
