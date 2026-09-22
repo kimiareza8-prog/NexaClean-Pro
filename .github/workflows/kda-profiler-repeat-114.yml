@@ -1,0 +1,15 @@
+name: KDA repeat profiler 1.1.4
+
+on:
+  push:
+    branches: [kda-releases]
+    paths:
+      - '.github/workflows/kda-profiler-repeat-114.yml'
+
+jobs:
+  profile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run signed homepage profiler again
+        run: |
+          curl --fail-with-body --connect-timeout 10 --max-time 180 -sS 'https://www.kimiazivar.com/wp-json/kda/v1/signed-profile?ts=1790069715&nonce=KDAprofRepeat114Nonce_q1w2e3r4t5y6u7i8&sig=wJiUE1SKEnD6DvRmn07Lp67jB8ob9eOpxj5faIGL3UrlIgRgU_3AEA8SUsCPs6eljfCy4ugsk0t_T6Y9CTK0BQ'
