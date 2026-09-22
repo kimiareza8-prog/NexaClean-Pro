@@ -1,0 +1,20 @@
+name: KDA after-repair speed test
+
+on:
+  push:
+    branches: [kda-releases]
+    paths:
+      - '.github/workflows/kda-after-repair-speed.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Measure homepage
+        shell: bash
+        run: |
+          set +e
+          for i in 1 2 3 4 5; do
+            curl -4 -o /dev/null --connect-timeout 8 --max-time 30 -sS               -A 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/153.0 Safari/537.36'               -H 'Cache-Control: no-cache'               -w "try=$i HTTP=%{http_code} dns=%{time_namelookup} connect=%{time_connect} tls=%{time_appconnect} ttfb=%{time_starttransfer} total=%{time_total}\n"               https://www.kimiazivar.com/ || echo "try=$i FAILED"
+            sleep 2
+          done
