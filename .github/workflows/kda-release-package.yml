@@ -1,0 +1,44 @@
+name: Build KDA signed package
+
+on:
+  push:
+    branches: [kda-releases]
+    paths:
+      - 'kda/chunks/**'
+      - 'kda/manifest.json'
+      - '.github/workflows/kda-release-package.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reconstruct and verify signed package
+        shell: python
+        run: |
+          import base64, hashlib, json, pathlib, urllib.parse
+          root = pathlib.Path("kda")
+          payload = "".join(p.read_text().strip() for p in sorted((root / "chunks").glob("*.txt")))
+          data = base64.b64decode(payload, validate=True)
+          manifest = json.loads((root / "manifest.json").read_text())
+          actual = hashlib.sha256(data).hexdigest()
+          expected = manifest["sha256"].lower()
+          if actual != expected:
+              raise SystemExit(f"SHA-256 mismatch: {actual} != {expected}")
+          name = pathlib.Path(urllib.parse.urlparse(manifest["package_url"]).path).name
+          if not name.endswith(".zip"):
+              raise SystemExit("package_url must end with .zip")
+          (root / name).write_bytes(data)
+          print(f"Built {name}: {len(data)} bytes, sha256={actual}")
+      - name: Commit verified package
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add kda/*.zip
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Build KDA v1.1.0 signed package [skip ci]"
+          git push
