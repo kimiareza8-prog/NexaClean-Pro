@@ -1,0 +1,32 @@
+name: Build KDA 1.1.5 repair inspector
+
+on:
+  push:
+    branches: [kda-releases]
+    paths:
+      - '.github/workflows/kda-build-115.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build package
+        run: python kda/patches/build115.py
+      - name: PHP lint
+        run: |
+          rm -rf /tmp/kda115lint
+          mkdir /tmp/kda115lint
+          unzip -q kda/kimiya-diagnostic-agent-v1.1.5.zip -d /tmp/kda115lint
+          find /tmp/kda115lint -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Commit package
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add kda/kimiya-diagnostic-agent-v1.1.5.zip kda/sha256-1.1.5.txt
+          git commit -m "Build KDA v1.1.5 repair inspector [skip ci]"
+          git push
