@@ -1,0 +1,15 @@
+name: KDA current profiler after optimizations
+
+on:
+  push:
+    branches: [kda-releases]
+    paths:
+      - '.github/workflows/kda-current-profiler.yml'
+
+jobs:
+  profile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run signed homepage profiler
+        run: |
+          curl --fail-with-body --connect-timeout 10 --max-time 180 -sS             'https://www.kimiazivar.com/wp-json/kda/v1/signed-profile?ts=1790073617&nonce=VpDT_uML0cKBDQpNY2ifR17yWt555KEP&sig=A8vfLIAc04VUXELXKn47dxDLdBRQ5DuZUQshqrcyuFFdfMLhdZywq8D2WskYuQMI-v3k4FXO-fZQE9QmMx5CBA'
