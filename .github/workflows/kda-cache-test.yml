@@ -1,0 +1,28 @@
+name: KDA cache effectiveness test
+
+on:
+  push:
+    branches: [kda-releases]
+    paths:
+      - '.github/workflows/kda-cache-test.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compare cached vs bypass
+        shell: bash
+        run: |
+          set +e
+          echo '=== HEADERS ==='
+          curl -4 -sSI --connect-timeout 8 --max-time 20 https://www.kimiazivar.com/ | sed -n '1,40p'
+          echo '=== NORMAL ==='
+          for i in 1 2 3 4 5; do
+            curl -4 -o /dev/null --connect-timeout 8 --max-time 30 -sS               -A 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/153.0 Safari/537.36'               -w "normal=$i HTTP=%{http_code} ttfb=%{time_starttransfer} total=%{time_total}\n"               https://www.kimiazivar.com/
+            sleep 2
+          done
+          echo '=== NO CACHE ==='
+          for i in 1 2 3; do
+            curl -4 -o /dev/null --connect-timeout 8 --max-time 30 -sS               -A 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/153.0 Safari/537.36'               -H 'Cache-Control: no-cache'               -w "nocache=$i HTTP=%{http_code} ttfb=%{time_starttransfer} total=%{time_total}\n"               https://www.kimiazivar.com/
+            sleep 2
+          done
