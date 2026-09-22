@@ -1,0 +1,15 @@
+name: KDA inspect cache layer 1.1.10
+
+on:
+  push:
+    branches: [kda-releases]
+    paths:
+      - '.github/workflows/kda-inspect-cache-layer-110.yml'
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read signed report
+        run: |
+          curl --fail-with-body --connect-timeout 10 --max-time 180 -sS             'https://www.kimiazivar.com/wp-json/kda/v1/signed-report?ts=1790074096&nonce=KDAReport110Cache_70b9b8fb891a1fe8&sig=bohjJy-IPnXdt8nOgTc5AAsgDdiS_aqZl2lV3x6FU2Xv-luQE76S-_8NHBl-lzCqH9ZV1_mm6YsJB6oCSiu9DQ'
