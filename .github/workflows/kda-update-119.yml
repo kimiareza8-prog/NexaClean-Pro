@@ -1,0 +1,15 @@
+name: KDA update to 1.1.9 self describing agent
+
+on:
+  push:
+    branches: [kda-releases]
+    paths:
+      - '.github/workflows/kda-update-119.yml'
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update agent
+        run: |
+          curl --fail-with-body --connect-timeout 10 --max-time 180 -sS 'https://www.kimiazivar.com/wp-json/kda/v1/update-trigger?ts=1790073428&nonce=XrU6NMdcNpTVdywYmMTX8XwKkoHetXgO&sig=nWNS3k-NwxCQ3-vmuGLjoWmjgLeBfVeeNGihOUvTsqhvOty85FBCU4fdlkBAivxR72hWmwx-OgrQRIg42yrCCg'
