@@ -1,9 +1,9 @@
 {
-  "version": "1.1.8",
-  "package_url": "https://raw.githubusercontent.com/kimiareza8-prog/NexaClean-Pro/kda-releases/kda/kimiya-diagnostic-agent-v1.1.8.zip",
-  "sha256": "dae4e4efb06e186bc45e39aac5060b58b3738cb0c6d26889abd369d39a9e19c5",
+  "version": "1.1.9",
+  "package_url": "https://raw.githubusercontent.com/kimiareza8-prog/NexaClean-Pro/kda-releases/kda/kimiya-diagnostic-agent-v1.1.9.zip",
+  "sha256": "65ec1967660038f516ae2a477917af27eb6fa710a71e035c765df8f60c361a3f",
   "min_wp": "6.0",
   "min_php": "7.4",
-  "published_at": "2026-09-22T10:32:03Z",
-  "signature": "qyr/CvmCzVOkPJ9uL5HGfUnJd2p3yg9f9+0zHBfHBRozydix+Jbfh3rOp+2Rv+Yh8tUXioxEPGI0Ikqd+MfYAg=="
+  "published_at": "2026-09-22T10:36:38Z",
+  "signature": "sELi5Y0XO1D0JLD4aKKB0POtypNmVbpI2JGDjNsJkk0d+gLDpfVMfgjWHn9DJTdada1J+eJOEBdNLbbIdoxQBA=="
 }
