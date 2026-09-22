@@ -1,0 +1,15 @@
+name: KDA update to 1.1.6 only
+
+on:
+  push:
+    branches: [kda-releases]
+    paths:
+      - '.github/workflows/kda-update-116-only.yml'
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update agent
+        run: |
+          curl --fail-with-body --connect-timeout 10 --max-time 180 -sS 'https://www.kimiazivar.com/wp-json/kda/v1/update-trigger?ts=1790072336&nonce=KDAUpdate116Repair_Q1w2E3r4T5y6U7i8&sig=_-AL1x0ZSSDhJ_K4dg3lvpexxqPj4dm83K7s8aSzYFzIB11iDY6kqjFnAE14PO5lvXmiLO8Faaeefjl_-wDCBQ'
