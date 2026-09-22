@@ -1,0 +1,15 @@
+name: KDA current signed report
+
+on:
+  push:
+    branches: [kda-releases]
+    paths:
+      - '.github/workflows/kda-current-report.yml'
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read signed report
+        run: |
+          curl --fail-with-body --connect-timeout 10 --max-time 180 -sS             'https://www.kimiazivar.com/wp-json/kda/v1/signed-report?ts=1790073711&nonce=KE8t_N0-J_T_V9GiLRsbH60tb5D8AOhl&sig=7v4k3eBnV3JFzfeoslvnfU3_xyqTwqTeTUnTkTOu5CBfnabUridW265J-LPQtsfJ1srAs75aLj58R0hgE1DxBA'
