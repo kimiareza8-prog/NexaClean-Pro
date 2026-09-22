@@ -1,0 +1,15 @@
+name: KDA update to 1.1.10 cache inspector
+
+on:
+  push:
+    branches: [kda-releases]
+    paths:
+      - '.github/workflows/kda-update-110.yml'
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update agent
+        run: |
+          curl --fail-with-body --connect-timeout 10 --max-time 180 -sS 'https://www.kimiazivar.com/wp-json/kda/v1/update-trigger?ts=1790074043&nonce=KDAUpdate110CacheInspect_86867cfbeafa5523&sig=r5Pj0sPDhkvlV5_XuRJjxnB75sM7hOZN9anHsSTXmyGAKxuX33FekZuIVuvGGF9pisAz_A9E5u_FpS-D7ffXCw'
