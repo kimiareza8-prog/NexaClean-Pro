@@ -1,0 +1,20 @@
+name: KDA profiler run 1.1.3
+
+on:
+  push:
+    branches: [kda-releases]
+    paths:
+      - '.github/workflows/kda-profiler-run-113.yml'
+
+jobs:
+  profile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update agent
+        run: |
+          curl --fail-with-body --connect-timeout 10 --max-time 180 -sS 'https://www.kimiazivar.com/wp-json/kda/v1/update-trigger?ts=1790069460&nonce=KDAprofUpdate113Nonce_9a8b7c6d5e4f3g2h&sig=u2TT3O8hYPF9Zk1uARodIP1COgq9X3K8E8Z15fVEZ7ZmhgPnz3qX_D-Oi0Ucm2ZhmXlfbDSCKSeC4qaaorRnCg'
+          echo
+      - name: Run signed homepage profiler
+        run: |
+          sleep 8
+          curl --fail-with-body --connect-timeout 10 --max-time 180 -sS 'https://www.kimiazivar.com/wp-json/kda/v1/signed-profile?ts=1790069460&nonce=KDAprofRun113Nonce_1z2y3x4w5v6u7t8s&sig=uFkyvufaWHhMa5ymQY1wUZlK1RBEDYeisXT5-itJ14metVeXhLSJcYU1A3pRDOXcmzU1U1Njzx6pEE0oXlyvBA'
