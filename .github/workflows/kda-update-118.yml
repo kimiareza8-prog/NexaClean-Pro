@@ -1,0 +1,15 @@
+name: KDA update to 1.1.8 listing optimizer
+
+on:
+  push:
+    branches: [kda-releases]
+    paths:
+      - '.github/workflows/kda-update-118.yml'
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update agent
+        run: |
+          curl --fail-with-body --connect-timeout 10 --max-time 180 -sS 'https://www.kimiazivar.com/wp-json/kda/v1/update-trigger?ts=1790073158&nonce=KDAUpdate118Listing_X7m4Q2v9L8s6N3p1&sig=Fn1Q0pHQ7b1gjsYkqkB6RzkfJluXD6EZBjuwKfJxHH7gbAU6PGuUUQ0cU14muhKyAru9sFv0CEwIeTNzMTKyBQ'
