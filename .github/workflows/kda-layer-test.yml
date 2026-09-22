@@ -1,0 +1,28 @@
+name: KDA layer isolation test
+
+on:
+  push:
+    branches: [kda-releases]
+    paths:
+      - '.github/workflows/kda-layer-test.yml'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compare request layers
+        shell: bash
+        run: |
+          set +e
+          testurl () {
+            label="$1"; shift
+            echo "=== $label ==="
+            curl -4 -o /dev/null --connect-timeout 8 --max-time 30 -sS -w "HTTP=%{http_code} dns=%{time_namelookup} connect=%{time_connect} tls=%{time_appconnect} ttfb=%{time_starttransfer} total=%{time_total} bytes=%{size_download}\n" "$@"
+          }
+          testurl static https://www.kimiazivar.com/wp-includes/js/jquery/jquery.min.js
+          testurl rest https://www.kimiazivar.com/wp-json/
+          testurl login https://www.kimiazivar.com/wp-login.php
+          testurl home-curl https://www.kimiazivar.com/
+          testurl home-browser -A 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/153.0 Safari/537.36' -H 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8' -H 'Accept-Encoding: gzip, deflate, br' https://www.kimiazivar.com/
+          echo '=== home-head ==='
+          curl -4 -I -o /dev/null --connect-timeout 8 --max-time 30 -sS -w "HTTP=%{http_code} ttfb=%{time_starttransfer} total=%{time_total}\n" https://www.kimiazivar.com/
