@@ -1,0 +1,29 @@
+name: KDA map slow Elementor IDs
+
+on:
+  push:
+    branches: [kda-releases]
+    paths:
+      - '.github/workflows/kda-map-elements.yml'
+
+jobs:
+  map:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch homepage and map slow IDs
+        shell: python
+        run: |
+          import urllib.request, re
+          req=urllib.request.Request('https://www.kimiazivar.com/',headers={'User-Agent':'Mozilla/5.0'})
+          html=urllib.request.urlopen(req,timeout=30).read().decode('utf-8','ignore')
+          ids=['34f25e3','cb77a77','b0d4009','796b45b','16f984b','8bdd7f1','1f733a2','7e3f143','0579a12','ee0cf31','fa8dc76']
+          for x in ids:
+              print('\n===',x,'===')
+              m=re.search(r'<[^>]*elementor-element-'+re.escape(x)+r'[^>]*>',html,re.I)
+              if m:
+                  print(m.group(0)[:1200])
+                  st=max(0,m.start()-300); en=min(len(html),m.end()+600)
+                  snippet=re.sub(r'\s+',' ',html[st:en])
+                  print(snippet[:1800])
+              else:
+                  print('NOT FOUND IN FINAL HTML')
