@@ -1,0 +1,50 @@
+name: Build KDA 1.1.1 package
+
+on:
+  push:
+    branches: [kda-releases]
+    paths:
+      - '.github/workflows/kda-build-111.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build 1.1.1 from signed-channel 1.1.0 package
+        shell: python
+        run: |
+          import pathlib, re, zipfile
+          src = pathlib.Path('kda/kimiya-diagnostic-agent-v1.1.0.zip')
+          dst = pathlib.Path('kda/kimiya-diagnostic-agent-v1.1.1.zip')
+          if not src.exists():
+              raise SystemExit('1.1.0 base package missing')
+          with zipfile.ZipFile(src, 'r') as zin, zipfile.ZipFile(dst, 'w', zipfile.ZIP_DEFLATED) as zout:
+              for info in zin.infolist():
+                  data = zin.read(info.filename)
+                  if info.filename.endswith('/kimiya-diagnostic-agent.php'):
+                      text = data.decode('utf-8')
+                      text = text.replace('Version: 1.1.0', 'Version: 1.1.1')
+                      text = text.replace("define('KDA_VERSION', '1.1.0');", "define('KDA_VERSION', '1.1.1');")
+                      data = text.encode('utf-8')
+                  elif info.filename.endswith('/readme.txt'):
+                      text = data.decode('utf-8')
+                      text = re.sub(r'^Stable tag:.*$', 'Stable tag: 1.1.1', text, flags=re.M)
+                      text += '\n= 1.1.1 =\n* Webhook/self-update verification release.\n* No diagnostic write permissions added.\n'
+                      data = text.encode('utf-8')
+                  new_info = zipfile.ZipInfo(info.filename, date_time=(2026,9,22,8,45,0))
+                  new_info.external_attr = info.external_attr
+                  new_info.compress_type = zipfile.ZIP_DEFLATED
+                  zout.writestr(new_info, data)
+          print(dst, dst.stat().st_size)
+      - name: Commit package
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add kda/kimiya-diagnostic-agent-v1.1.1.zip
+          git commit -m "Build KDA v1.1.1 package [skip ci]"
+          git push
