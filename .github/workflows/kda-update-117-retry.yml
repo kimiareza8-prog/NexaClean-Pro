@@ -1,0 +1,15 @@
+name: KDA update to 1.1.7 retry
+
+on:
+  push:
+    branches: [kda-releases]
+    paths:
+      - '.github/workflows/kda-update-117-retry.yml'
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update agent
+        run: |
+          curl --fail-with-body --connect-timeout 10 --max-time 180 -sS 'https://www.kimiazivar.com/wp-json/kda/v1/update-trigger?ts=1790072582&nonce=KDAUpdate117Retry_L1k2J3h4G5f6D7s8&sig=cdJU9dpD8PDT9IEMgrKwXauACgijdisbmJ8Frgxf2B6KpKpNAr2Bn7K9w_YDi5MmgvdH3jcX-vuuVt56DjjoBw'
